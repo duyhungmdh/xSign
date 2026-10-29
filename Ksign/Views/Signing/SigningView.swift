@@ -304,15 +304,36 @@ extension SigningView {
 #if DEBUG
 		LogsManager.shared.startCapture()
 #endif
+		
+		// xSign v7.3: mở hộp thoại tiến trình ký. Màn hình ký tự hạ xuống (LibraryView lắng nghe SigningProgressCenter).
+		// Việc ký chạy trong Task riêng (FR.signPackageFile) nên không bị huỷ khi màn hình này đóng;
+		// phần xử lý kết quả bên dưới không dùng `self` để không phụ thuộc vòng đời của view.
+		let certificate = _selectedCert()
+		let certName: String = {
+			if _temporaryOptions.doAdhocSigning { return "Ad-hoc" }
+			if _temporaryOptions.onlyModify { return "" }
+			guard let certificate else { return "" }
+			return certificate.nickname ?? Storage.shared.getProvisionFileDecoded(for: certificate)?.Name ?? ""
+		}()
+		let app = self.app
+		let removeApp = _temporaryOptions.removeApp
+		let install = signAndInstall
+		
+		SigningProgressCenter.shared.begin(app: app, certificateName: certName)
+		
 		FR.signPackageFile(
 			app,
 			using: _temporaryOptions,
 			icon: appIcon,
-			certificate: _selectedCert()
-		) { [self] error in
+			certificate: certificate,
+			progress: { stage, fraction in
+				SigningProgressCenter.shared.update(stage: stage, fraction: fraction)
+			}
+		) { error in
 			if let error {
+				SigningProgressCenter.shared.fail()
 				let ok = UIAlertAction(title: .localized("Dismiss"), style: .cancel) { _ in
-					dismiss()
+					SigningProgressCenter.shared.dismiss()
 				}
 				
 				UIAlertController.showAlert(
@@ -321,20 +342,22 @@ extension SigningView {
 					actions: [ok]
 				)
 			} else {
-				// Remove app after signed option thing
-				if _temporaryOptions.removeApp && !app.isSigned {
-					Storage.shared.deleteApp(for: app)
+				// Xoá app gốc SAU khi hộp thoại đóng (hộp thoại còn đọc tên/icon app đó)
+				if removeApp && !app.isSigned {
+					SigningProgressCenter.shared.runAfterDismiss {
+						Storage.shared.deleteApp(for: app)
+					}
 				}
-                
-				if signAndInstall {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("feather.installApp"),
-                            object: nil
-                        )
-                    }
-                }
-				dismiss()
+				
+				SigningProgressCenter.shared.complete()
+				
+				if install {
+					// LibraryView chờ hộp thoại ký đóng rồi mới mở hộp thoại cài (tránh 2 sheet cùng lúc)
+					NotificationCenter.default.post(
+						name: NSNotification.Name("feather.installApp"),
+						object: nil
+					)
+				}
 			}
 		}
 	}

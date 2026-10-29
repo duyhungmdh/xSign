@@ -14,7 +14,7 @@ extension ServerInstaller {
 	var plistEndpoint: URL {
 		var comps = URLComponents()
 		comps.scheme = ServerInstaller.getServerMethod() == 1 ? "http" : "https"
-		comps.host = Self.sni
+		comps.host = host
 		comps.path = "/\(id).plist"
 		comps.port = port
 		return comps.url!
@@ -23,7 +23,7 @@ extension ServerInstaller {
 	var payloadEndpoint: URL {
 		var comps = URLComponents()
 		comps.scheme = ServerInstaller.getServerMethod() == 1 ? "http" : "https"
-		comps.host = Self.sni
+		comps.host = host
 		comps.path = "/\(id).ipa"
 		comps.port = port
 		return comps.url!
@@ -32,7 +32,7 @@ extension ServerInstaller {
 	var pageEndpoint: URL {
 		var comps = URLComponents()
 		comps.scheme = ServerInstaller.getServerMethod() == 1 ? "http" : "https"
-		comps.host = Self.sni
+		comps.host = host
 		comps.path = "/install"
 		comps.port = port
 		return comps.url!
@@ -61,7 +61,7 @@ extension ServerInstaller {
 	var displayImageSmallEndpoint: URL {
 		var comps = URLComponents()
 		comps.scheme = "https"
-		comps.host = Self.sni
+		comps.host = host
 		comps.path = "/app57x57.png"
 		comps.port = port
 		return comps.url!
@@ -70,7 +70,7 @@ extension ServerInstaller {
 	var displayImageLargeEndpoint: URL {
 		var comps = URLComponents()
 		comps.scheme = "https"
-		comps.host = Self.sni
+		comps.host = host
 		comps.path = "/app512x512.png"
 		comps.port = port
 		return comps.url!

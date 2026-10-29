@@ -18,6 +18,8 @@ import IDeviceSwift
 class ServerInstaller: Identifiable, ObservableObject {
 	let id = UUID()
 	let port = Int.random(in: 4000...8000)
+	/// Chốt địa chỉ một lần cho cả lần cài này, để plist và .ipa luôn cùng một địa chỉ
+	let host: String = ServerInstaller.resolveHost()
 	private var _needsShutdown = false
 	
 	var packageUrl: URL?
@@ -28,7 +30,7 @@ class ServerInstaller: Identifiable, ObservableObject {
 	init(app: AppInfoPresentable, viewModel: InstallerStatusViewModel) throws {
 		self.app = app
 		self.viewModel = viewModel
-		self._server = try Self.setupApp(port: port)
+		self._server = try Self.setupApp(port: port, host: host)
 		
 		try _configureRoutes()
 		try _server.server.start()

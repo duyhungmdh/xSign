@@ -4,6 +4,8 @@
 //
 //  Created by samara on 11.04.2025.
 //
+//  xSign v5: tab Đã tải về có nút "Ký" + tên tệp; tab Đã ký có chip ngày còn lại, dung lượng, nút "Cài đặt".
+//
 
 import SwiftUI
 import NimbleExtensions
@@ -13,10 +15,6 @@ import NimbleViews
 struct LibraryCellView: View {
 	@AppStorage("Feather.libraryCellAppearance") private var _libraryCellAppearance: Int = 0
     @Environment(\.editMode) private var editMode
-	var certInfo: Date.ExpirationInfo? {
-		Storage.shared.getCertificate(from: app)?.expiration?.expirationInfo()
-	}
-	
 	var app: AppInfoPresentable
 	@Binding var selectedInfoAppPresenting: AnyApp?
 	@Binding var selectedSigningAppPresenting: AnyApp?
@@ -24,6 +22,8 @@ struct LibraryCellView: View {
 	@Binding var selectedAppDylibsPresenting: AnyApp?
 	@Binding var selectedApps: Set<String>
 	@State private var _showActionSheet = false
+	@State private var _sizeText: String?
+	@ObservedObject private var _fileNames = ImportedFileNames.shared
 	
 	private var _isSelected: Bool {
 		selectedApps.contains(app.uuid ?? "")
@@ -45,29 +45,43 @@ struct LibraryCellView: View {
 			
 			FRAppIconView(app: app, size: 57)
 			
-			NBTitleWithSubtitleView(
-				title: app.name ?? .localized("Unknown"),
-				subtitle: _desc,
-				linelimit: 0
-			)
+			VStack(alignment: .leading, spacing: 3) {
+				Text(app.name ?? .localized("Unknown"))
+					.font(.headline)
+					.lineLimit(1)
+				Text(_desc)
+					.font(.subheadline)
+					.foregroundStyle(.secondary)
+					.lineLimit(1)
+				_extraLine
+			}
 			
-			Spacer()
+			Spacer(minLength: 4)
 			
 			if !isEditing {
-				if app.isSigned, let certInfo = certInfo {
-					HStack(spacing: 4) {
-						Image(systemName: "clock")
-							.font(.system(size: 11))
-	                    Text(certInfo.formatted)
-							.font(.system(size: 12))
-							.fontWeight(.semibold)
+				if app.isSigned {
+					// v7: nút Cài đặt thu thành icon tròn gọn, nhường chỗ cho dòng bundle ID
+					Button {
+						selectedInstallAppPresenting = AnyApp(base: app)
+					} label: {
+						XSignInstallButtonLabel()
 					}
-					.foregroundColor(.white)
-					.padding(.horizontal, 10)
-					.padding(.vertical, 5)
-					.background(certInfo.color)
-					.clipShape(Capsule())
-					.padding(.trailing, 4)
+					.buttonStyle(.borderless)
+					.accessibilityLabel(Text(.localized("Install")))
+				} else {
+					Button {
+						selectedSigningAppPresenting = AnyApp(base: app)
+					} label: {
+						VStack(spacing: 2) {
+							Image(systemName: "signature")
+								.font(.title3)
+							Text(.localized("Sign"))
+								.font(.caption.weight(.semibold))
+						}
+						.foregroundStyle(Color.xsignAction)
+						.frame(minWidth: 40)
+					}
+					.buttonStyle(.borderless)
 				}
 				
 				Image(systemName: "chevron.right")
@@ -77,6 +91,7 @@ struct LibraryCellView: View {
 		}
 		.scaleEffect(_isSelected ? 0.98 : 1.0)
 		.contentShape(Rectangle())
+		.onAppear { _loadSizeIfNeeded() }
 		.onTapGesture {
 			if isEditing {
 				_toggleSelection()
@@ -132,6 +147,77 @@ struct LibraryCellView: View {
 			} else {
 				selectedApps.insert(uuid)
 			}
+		}
+	}
+}
+
+
+// MARK: - xSign v5 helpers
+extension LibraryCellView {
+	/// Dòng thứ 3: tab Đã tải về = tên tệp; tab Đã ký = chip ngày còn lại + dung lượng
+	@ViewBuilder
+	private var _extraLine: some View {
+		if app.isSigned {
+			HStack(spacing: 8) {
+				if let cert = Storage.shared.getCertificate(from: app), let expiration = cert.xsignExpirationDate {
+					let info = CertificateExpiry(expiration)
+					ExpiryChip(text: info.badgeText, color: info.color)
+				}
+				if let _sizeText {
+					HStack(spacing: 4) {
+						Image(systemName: "internaldrive")
+						Text(_sizeText)
+					}
+					.font(.caption)
+					.foregroundStyle(.secondary)
+					.lineLimit(1)
+				}
+			}
+		} else {
+			HStack(spacing: 4) {
+				Image(systemName: "doc")
+				Text(_fileName)
+					.truncationMode(.middle)
+			}
+			.font(.caption)
+			.foregroundStyle(.secondary)
+			.lineLimit(1)
+		}
+	}
+	
+	/// Tên tệp .ipa gốc (nếu biết), không thì ghép từ tên + phiên bản
+	private var _fileName: String {
+		// v7: ưu tiên tên tệp đã lưu lúc nhập, hiển thị nguyên văn
+		if let saved = _fileNames.name(for: app.uuid) {
+			return saved
+		}
+		if let name = (app as? Imported)?.source?.lastPathComponent, !name.isEmpty {
+			return name
+		}
+		let n = app.name ?? "app"
+		return app.version.map { "\(n)_\($0).ipa" } ?? "\(n).ipa"
+	}
+	
+	/// Tính dung lượng thư mục app đã ký (nền, không chặn giao diện)
+	private func _loadSizeIfNeeded() {
+		guard app.isSigned, _sizeText == nil,
+			  let dir = Storage.shared.getUuidDirectory(for: app) else { return }
+		DispatchQueue.global(qos: .utility).async {
+			var total: Int64 = 0
+			if let en = FileManager.default.enumerator(
+				at: dir,
+				includingPropertiesForKeys: [.totalFileAllocatedSizeKey, .isRegularFileKey],
+				options: []
+			) {
+				for case let url as URL in en {
+					let v = try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey, .isRegularFileKey])
+					if v?.isRegularFile == true { total += Int64(v?.totalFileAllocatedSize ?? 0) }
+				}
+			}
+			let f = ByteCountFormatter()
+			f.countStyle = .file
+			let text = f.string(fromByteCount: total)
+			DispatchQueue.main.async { _sizeText = text }
 		}
 	}
 }
@@ -222,32 +308,60 @@ extension LibraryCellView {
 			Storage.shared.deleteApp(for: app)
 		}
 	}
+}
+
+
+// MARK: - Nút Cài đặt (v7.2, theo hình mẫu)
+/// Hình tròn xanh phẳng, biểu tượng khay + mũi tên tải xuống màu trắng, chữ "Cài đặt" đậm bên dưới.
+/// Cột nút chỉ rộng bằng chữ → dòng bundle ID không bị cắt.
+struct XSignInstallButtonLabel: View {
+	static let size: CGFloat = 32
+	static let blue = Color(red: 0.11, green: 0.37, blue: 0.85)
 	
-	@ViewBuilder
-	private func _buttonActions(for app: AppInfoPresentable) -> some View {
-		Group {
-			if app.isSigned {
-				Button {
-					selectedInstallAppPresenting = AnyApp(base: app)
-				} label: {
-					FRExpirationPillView(
-						title: .localized("Install"),
-						showOverlay: _libraryCellAppearance == 0,
-						expiration: certInfo
-					)
-				}
-			} else {
-				Button {
-					selectedSigningAppPresenting = AnyApp(base: app)
-				} label: {
-					FRExpirationPillView(
-						title: .localized("Sign"),
-						showOverlay: true,
-						expiration: nil
-					)
-				}
+	var body: some View {
+		VStack(spacing: 3) {
+			ZStack {
+				Circle().fill(Self.blue)
+				XSignInstallGlyph()
+					.stroke(Color.white, style: StrokeStyle(lineWidth: 2.0, lineCap: .round, lineJoin: .round))
+					.frame(width: Self.size * 0.52, height: Self.size * 0.52)
 			}
+			.frame(width: Self.size, height: Self.size)
+			
+			Text(.localized("Install"))
+				.font(.system(size: 10, weight: .bold))
+				.foregroundStyle(Self.blue)
+				.lineLimit(1)
+				.fixedSize()
 		}
-		.buttonStyle(.borderless)
+	}
+}
+
+/// Khay bo góc (hở giữa cạnh trên) + mũi tên đi xuống, vẽ trong khung vuông 0...1
+struct XSignInstallGlyph: Shape {
+	func path(in rect: CGRect) -> Path {
+		func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+			CGPoint(x: rect.minX + rect.width * x, y: rect.minY + rect.height * y)
+		}
+		var p = Path()
+		let l: CGFloat = 0.04, r: CGFloat = 0.96, t: CGFloat = 0.34, b: CGFloat = 0.96, k: CGFloat = 0.16
+		// khay
+		p.move(to: pt(0.36, t))
+		p.addLine(to: pt(l + k, t))
+		p.addQuadCurve(to: pt(l, t + k), control: pt(l, t))
+		p.addLine(to: pt(l, b - k))
+		p.addQuadCurve(to: pt(l + k, b), control: pt(l, b))
+		p.addLine(to: pt(r - k, b))
+		p.addQuadCurve(to: pt(r, b - k), control: pt(r, b))
+		p.addLine(to: pt(r, t + k))
+		p.addQuadCurve(to: pt(r - k, t), control: pt(r, t))
+		p.addLine(to: pt(0.64, t))
+		// mũi tên
+		p.move(to: pt(0.5, 0.0))
+		p.addLine(to: pt(0.5, 0.70))
+		p.move(to: pt(0.31, 0.51))
+		p.addLine(to: pt(0.5, 0.70))
+		p.addLine(to: pt(0.69, 0.51))
+		return p
 	}
 }

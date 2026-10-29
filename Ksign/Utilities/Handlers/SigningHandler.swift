@@ -37,11 +37,16 @@ final class SigningHandler: NSObject {
 		super.init()
 	}
 	
+	/// xSign v7.3: báo chặng cho hộp thoại ký. stage 1 = Chuẩn bị, 2 = Đang ký, 3 = Đóng gói; fraction 0...1
+	var onProgress: ((Int, Double) -> Void)?
+	private func _report(_ stage: Int, _ fraction: Double) { onProgress?(stage, fraction) }
+	
 	func copy() async throws {
 		guard let appUrl = Storage.shared.getAppDirectory(for: _app) else {
 			throw SigningFileHandlerError.appNotFound
 		}
 
+		_report(1, 0.05)
 		try _fileManager.createDirectoryIfNeeded(at: _uniqueWorkDir)
 		
 		let movedAppURL = _uniqueWorkDir.appendingPathComponent(appUrl.lastPathComponent)
@@ -51,6 +56,7 @@ final class SigningHandler: NSObject {
 		
 		try _fileManager.copyItem(at: appUrl, to: movedAppURL)
 		_movedAppPath = movedAppURL
+		_report(1, 0.4)
 		print("[\(_uuid)] Moved Payload to: \(movedAppURL.path)")
 	}
 	
@@ -68,6 +74,7 @@ final class SigningHandler: NSObject {
 		}
 		
 		try await _modifyDict(using: infoDictionary, with: _options, to: movedAppPath)
+		_report(1, 0.55)
 		
 		if let icon = appIcon {
 			try await _modifyDict(using: infoDictionary, for: icon, to: movedAppPath)
@@ -87,6 +94,7 @@ final class SigningHandler: NSObject {
 		
         try await _removeCodeSignature(for: movedAppPath)
 		try await _removeProvisioning(for: movedAppPath)
+		_report(1, 0.7)
 		
         try await _inject(for: movedAppPath, with: _options.injectionFiles, with: _options)
         
@@ -106,10 +114,13 @@ final class SigningHandler: NSObject {
             try await _locateMachosAndFixupArm64eSlice(for: movedAppPath)
         }
 		
+        _report(1, 0.9)
         let handler = ZsignHandler(appUrl: movedAppPath, options: _options, cert: appCertificate)
         try await handler.disinject()
+        _report(1, 1.0)
 		
 		if !_options.onlyModify {
+			_report(2, 0.05)
 			let handler = ZsignHandler(appUrl: movedAppPath, options: _options, cert: appCertificate)
 			
 			if _options.doAdhocSigning {
@@ -120,8 +131,12 @@ final class SigningHandler: NSObject {
 				throw SigningFileHandlerError.missingCertifcate
 			}
 		}
+        _report(2, 1.0)
+        _report(3, 0.15)
         try await self.move()
+        _report(3, 0.6)
         try await self.addToDatabase()
+        _report(3, 1.0)
 
         if let error = handler.hadError {
             throw error

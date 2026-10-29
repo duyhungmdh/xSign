@@ -40,8 +40,12 @@ struct BulkInstallProgressView: View {
                 if _serverMethod == 0 {
                     UIApplication.shared.open(URL(string: installer.iTunesLink)!)
                 } else if _serverMethod == 1 {
-                    _isWebviewPresenting = true
-                }
+					// xSign: mở thẳng itms-services, bỏ trang Safari trung gian
+					// (tránh hộp thoại "Mở trang này trong iTunes?")
+					if let url = URL(string: installer.iTunesLinkExternal) {
+						UIApplication.shared.open(url)
+					}
+				}
             }
             
             if case .installing = newStatus {

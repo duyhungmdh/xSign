@@ -18,6 +18,8 @@ struct FeatherApp: App {
 	@StateObject var accentColorManager = AccentColorManager.shared
     @StateObject var extractManager = ExtractManager.shared
 	@StateObject var logsManager = LogsManager.shared
+	@StateObject var libraryState = XSignLibraryState.shared
+	@AppStorage(AppLanguage.key) private var _appLanguage: String = AppLanguage.vi.rawValue
 	let storage = Storage.shared
 
 	var body: some Scene {
@@ -25,20 +27,28 @@ struct FeatherApp: App {
 			VStack {
                 ExtractHeaderView(extractManager: extractManager)
                     .transition(.move(edge: .top).combined(with: .opacity))
-				DownloadHeaderView(downloadManager: downloadManager)
-					.transition(.move(edge: .top).combined(with: .opacity))
+				// xSign v7: ở tab Thư viện đã có thanh riêng, ẩn thanh gốc để khỏi hiện 2 chỗ
+				if !libraryState.isLibraryVisible {
+					DownloadHeaderView(downloadManager: downloadManager)
+						.transition(.move(edge: .top).combined(with: .opacity))
+				}
 				VariedTabbarView()
 					.environment(\.managedObjectContext, storage.context)
 					.onOpenURL(perform: _handleURL)
 					.transition(.move(edge: .top).combined(with: .opacity))
 			}
+			.environment(\.locale, Locale(identifier: _appLanguage))
 			.animation(.smooth, value: downloadManager.manualDownloads.description)
             .animation(.smooth, value: extractManager.extractItems.description)
+			.animation(.smooth, value: libraryState.isLibraryVisible)
 			.onReceive(accentColorManager.objectWillChange) { _ in
 				accentColorManager.updateGlobalTintColor()
 			}
 			.onAppear {
 				accentColorManager.updateGlobalTintColor()
+				// xSign v7: khởi động sớm để không bỏ lỡ tên tệp của lượt nhập đầu tiên
+				_ = ImportProgressModel.shared
+				_ = ImportedFileNames.shared
 				if logsManager.isCapturing { logsManager.startCapture() }
 			}
 		}
@@ -69,7 +79,7 @@ struct FeatherApp: App {
 			}
 			
             if url.pathExtension == "ksign" {
-                UIAlertController.showAlertWithOk(title: .localized("Error"), message: .localized("Ksign certificate file (.ksign) is now unsupported from v1.5.1, please refer to use .p12 and .mobileprovision instead."))
+                UIAlertController.showAlertWithOk(title: .localized("Error"), message: .localized("xSign certificate file (.ksign) is now unsupported from v1.5.1, please refer to use .p12 and .mobileprovision instead."))
             }
 		}
 	}
@@ -82,6 +92,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         
+        AppLanguage.bootstrap()
         _createPipeline()
         _createSourcesDirectory()
         if !UserDefaults.standard.bool(forKey: "hasInitializedBuiltInSources") {

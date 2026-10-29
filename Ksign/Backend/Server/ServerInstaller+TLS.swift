@@ -22,7 +22,7 @@ extension ServerInstaller {
 		return env
 	}()
 	
-	static func setupApp(port: Int) throws -> Application {
+	static func setupApp(port: Int, host: String) throws -> Application {
 		let app = Application(env)
 		app.threadPool = .init(numberOfThreads: 1)
 		
@@ -32,7 +32,7 @@ extension ServerInstaller {
 			}
 		}
 		
-		app.http.server.configuration.hostname = Self.sni
+		app.http.server.configuration.hostname = host
 		app.http.server.configuration.tcpNoDelay = true
 		app.http.server.configuration.address = .hostname("0.0.0.0", port: port)
 		app.http.server.configuration.port = port
@@ -43,17 +43,22 @@ extension ServerInstaller {
 	}
 	
 	// MARK: Files/IP
-	static let sni: String = {
+	/// xSign v7.3: địa chỉ máy chủ được tính LẠI mỗi lần cài (trước đây là `static let` nên bị "đóng băng"
+	/// theo mạng lúc mở app → đổi từ Wi-Fi sang 5G là sai địa chỉ, iOS không tải được .ipa và treo ở "Gửi dữ liệu").
+	static var sni: String { resolveHost() }
+	
+	static func resolveHost() -> String {
 		let localhost = "127.0.0.1"
 		
 		if getServerMethod() == 1 {
-			return !ServerInstaller.getIPFix()
-			? (getLocalAddress() ?? localhost)
-			: localhost
+			// Bán cục bộ (HTTP): có Wi-Fi thì dùng IP Wi-Fi; KHÔNG có Wi-Fi (5G / 4G) thì dùng 127.0.0.1.
+			// Không dùng IP của sóng di động vì thường là IP CGNAT / IPv6 (464XLAT), chính iPhone cũng không kết nối tới được.
+			if getIPFix() { return localhost }
+			return getWiFiAddress() ?? localhost
 		} else {
 			return readCommonName() ?? localhost
 		}
-	}()
+	}
 	
 	static func tls() throws -> TLSConfiguration? {
 		guard
@@ -105,33 +110,34 @@ extension ServerInstaller {
 		return Bundle.main.url(forResource: name, withExtension: ext)
 	}
 	
-	static func getLocalAddress() -> String? {
+	/// IPv4 của Wi-Fi (en0). Bỏ qua 169.254.x.x (link-local) và 0.0.0.0. Không có Wi-Fi → nil.
+	static func getWiFiAddress() -> String? {
 		var address: String?
 		var ifaddr: UnsafeMutablePointer<ifaddrs>?
 		
-		if getifaddrs(&ifaddr) == 0 {
-			var ptr = ifaddr
-			while ptr != nil {
-				let interface = ptr!.pointee
-				let addrFamily = interface.ifa_addr.pointee.sa_family
-				
-				if addrFamily == UInt8(AF_INET) {
-					
-					let name = String(cString: interface.ifa_name)
-					if name == "en0" || name == "pdp_ip0" {
-						
-						var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-						if getnameinfo(interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
-									   &hostname, socklen_t(hostname.count),
-									   nil, socklen_t(0), NI_NUMERICHOST) == 0 {
-							address = String(cString: hostname)
-						}
-						
-					}
+		guard getifaddrs(&ifaddr) == 0 else { return nil }
+		defer { freeifaddrs(ifaddr) }
+		
+		var ptr = ifaddr
+		while let current = ptr {
+			let interface = current.pointee
+			ptr = interface.ifa_next
+			
+			guard
+				let addr = interface.ifa_addr,
+				addr.pointee.sa_family == UInt8(AF_INET),
+				String(cString: interface.ifa_name) == "en0"
+			else { continue }
+			
+			var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+			if getnameinfo(addr, socklen_t(addr.pointee.sa_len),
+						   &hostname, socklen_t(hostname.count),
+						   nil, socklen_t(0), NI_NUMERICHOST) == 0 {
+				let ip = String(cString: hostname)
+				if !ip.hasPrefix("169.254.") && ip != "0.0.0.0" {
+					address = ip
 				}
-				ptr = ptr!.pointee.ifa_next
 			}
-			freeifaddrs(ifaddr)
 		}
 		
 		return address

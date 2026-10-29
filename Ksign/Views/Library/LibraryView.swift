@@ -21,6 +21,9 @@ struct LibraryView: View {
     @State private var _isBulkInstallingPresenting = false
 	@State private var _isImportingPresenting = false
 	@State private var _isDownloadingPresenting = false
+	@State private var _isSigningSheetPresenting = false
+	@State private var _pendingInstallAfterSigning = false
+	@ObservedObject private var _signingProgress = SigningProgressCenter.shared
 
 	@State private var _alertDownloadString: String = "" // for _isDownloadingPresenting
 	@State private var _searchText = ""
@@ -72,6 +75,15 @@ struct LibraryView: View {
 				.pickerStyle(SegmentedPickerStyle())
 				.padding(.horizontal)
 				.padding(.vertical, 8)
+				
+				// xSign v6: thanh tiến trình dẹt nằm ngay trên tiêu đề danh sách
+				Group {
+					if _selectedTab == 0 {
+						ImportProgressBar()
+					} else {
+						InstallProgressBar()
+					}
+				}
 				
 				NBListAdaptable {
 					if _selectedTab == 0 {
@@ -171,14 +183,61 @@ struct LibraryView: View {
 				}
 			}
             .environment(\.editMode, $_isEditMode)
+			// xSign v7: báo cho app biết đang ở tab Thư viện (để ẩn thanh tiến trình gốc ở đầu app)
+			.onAppear { XSignLibraryState.shared.isLibraryVisible = true }
+			.onDisappear { XSignLibraryState.shared.isLibraryVisible = false }
 			.sheet(item: $_selectedInfoAppPresenting) { app in
 				LibraryInfoView(app: app.base)
 			}
 			.sheet(item: $_selectedInstallAppPresenting) { app in
 				InstallPreviewView(app: app.base, isSharing: app.archive)
-					.presentationDetents([.height(200)])
-					.presentationDragIndicator(.visible)			}
-			.fullScreenCover(item: $_selectedSigningAppPresenting) { app in
+					.presentationDetents([.height(210)])
+					.presentationDragIndicator(.visible)
+					.xsignSheetBackground()
+			}
+			// xSign v7.3: bấm "Bắt đầu ký" → màn hình ký hạ xuống → hiện hộp thoại tiến trình ký.
+			// Hộp thoại chỉ mở SAU khi màn hình ký đã đóng hẳn (onDismiss của fullScreenCover), nên không bị bỏ qua.
+			.sheet(isPresented: $_isSigningSheetPresenting, onDismiss: {
+				if _signingProgress.phase != .running { _signingProgress.dismiss() }
+				// Ký & cài: hộp thoại ký đóng xong mới mở hộp thoại cài đặt
+				if _pendingInstallAfterSigning {
+					_pendingInstallAfterSigning = false
+					DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+						if let app = _signedApps.first {
+							_selectedInstallAppPresenting = AnyApp(base: app)
+						}
+					}
+				}
+			}) {
+				SigningSheetContent()
+					.presentationDetents([.height(210)])
+					.presentationDragIndicator(.visible)
+					.interactiveDismissDisabled(_signingProgress.phase == .running)
+					.xsignSheetBackground()
+			}
+			.onReceive(SigningProgressCenter.shared.$phase) { phase in
+				if phase == .running, !_isSigningSheetPresenting {
+					if _selectedSigningAppPresenting != nil {
+						// hạ màn hình ký xuống; hộp thoại sẽ mở ở onDismiss bên dưới
+						_selectedSigningAppPresenting = nil
+					} else {
+						_isSigningSheetPresenting = true
+					}
+					// dự phòng: nếu onDismiss không chạy thì vẫn mở hộp thoại sau 1 giây
+					DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+						if SigningProgressCenter.shared.phase != .idle, !_isSigningSheetPresenting {
+							_isSigningSheetPresenting = true
+						}
+					}
+				} else if phase == .idle {
+					_isSigningSheetPresenting = false
+				}
+			}
+			.fullScreenCover(item: $_selectedSigningAppPresenting, onDismiss: {
+				if SigningProgressCenter.shared.phase != .idle, !_isSigningSheetPresenting {
+					_isSigningSheetPresenting = true
+				}
+			}) { app in
 				SigningView(app: app.base, signAndInstall: app.signAndInstall)
 					.compatNavigationTransition(id: app.base.uuid ?? "", ns: _namespace)
 			}
@@ -235,8 +294,11 @@ struct LibraryView: View {
 				}
 			}
 			.onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("feather.installApp"))) { notification in
-                if let app = _signedApps.first {
-                    _selectedInstallAppPresenting = AnyApp(base: app)
+				// đang ký (hộp thoại ký còn mở) → chờ nó đóng rồi mới mở hộp thoại cài
+				if SigningProgressCenter.shared.phase != .idle || _isSigningSheetPresenting {
+					_pendingInstallAfterSigning = true
+				} else if let app = _signedApps.first {
+					_selectedInstallAppPresenting = AnyApp(base: app)
 				}
 			}
         }

@@ -40,7 +40,7 @@
 			<key>CFBundleTypeIconFile</key>
 			<string>ksign_extension</string>
 			<key>CFBundleTypeName</key>
-			<string>Ksign Certificate Package</string>
+			<string>xSign Certificate Package</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -53,36 +53,6 @@
 	</array>
 	<key>CFBundleIcons</key>
 	<dict>
-		<key>CFBundleAlternateIcons</key>
-		<dict>
-			<key>kana_ded</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>kana_ded</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>kana_love</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>kana_love</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>kana_peek</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>kana_peek</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-		</dict>
 		<key>CFBundlePrimaryIcon</key>
 		<dict>
 			<key>CFBundleIconFiles</key>
@@ -114,7 +84,7 @@
 			<key>CFBundleURLIconFile</key>
 			<string>ksign_extension</string>
 			<key>CFBundleURLName</key>
-			<string>nya.asami.ksign</string>
+			<string>mdh.xsign</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>ksign</string>
@@ -200,7 +170,7 @@
 				<string>public.content</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Ksign Certificate Package</string>
+			<string>xSign Certificate Package</string>
 			<key>UTTypeIconFile</key>
 			<string>ksign_extension</string>
 			<key>UTTypeIcons</key>

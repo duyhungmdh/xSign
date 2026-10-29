@@ -92,12 +92,28 @@ extension Storage {
 	}
 
 
+	/// xSign: xoá một lần các repo mặc định không dùng (SideStore Team Pick, crystall1ne.dev)
+	/// đã được thêm từ các bản cài trước.
+	func removeUnwantedBuiltInSources() {
+		let flag = "xsign.removedDefaultSources.v1"
+		guard !UserDefaults.standard.bool(forKey: flag) else { return }
+		
+		let blockedHosts = ["community-apps.sidestore.io", "alt.crystall1ne.dev"]
+		for source in getSources() {
+			if let host = source.sourceURL?.host, blockedHosts.contains(host) {
+				context.delete(source)
+			}
+		}
+		saveContext()
+		UserDefaults.standard.set(true, forKey: flag)
+	}
+
 	func addBuiltInSources() {
+		removeUnwantedBuiltInSources()
+		
 		let builtInSourceURLs = [
             "https://raw.githubusercontent.com/Nyasami/Ksign/refs/heads/main/repo.json",
-            "https://community-apps.sidestore.io/sidecommunity.json",
-            "https://github.com/LiveContainer/LiveContainer/releases/download/1.0/apps.json",
-            "https://alt.crystall1ne.dev"
+            "https://github.com/LiveContainer/LiveContainer/releases/download/1.0/apps.json"
 		]
 		
 		for urlString in builtInSourceURLs {

@@ -45,10 +45,12 @@ enum FR {
 		using options: Options,
 		icon: UIImage?,
 		certificate: CertificatePair?,
+		progress: ((Int, Double) -> Void)? = nil,
 		completion: @escaping (Error?) -> Void
 	) {
 		Task.detached {
 			let handler = SigningHandler(app: app, options: options)
+			handler.onProgress = progress
 			if !options.onlyModify {
 				handler.appCertificate = certificate
 			}

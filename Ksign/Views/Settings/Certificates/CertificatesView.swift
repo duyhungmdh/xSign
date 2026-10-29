@@ -4,6 +4,8 @@
 //
 //  Created by samara on 15.04.2025.
 //
+//  xSign v5: thẻ lớn có menu chevron (Xem chi tiết / Chia sẻ / Xóa), UDID có nút sao chép.
+//
 
 import SwiftUI
 import NimbleViews
@@ -15,6 +17,8 @@ struct CertificatesView: View {
 	
 	@State private var _isAddingPresenting = false
 	@State private var _isSelectedInfoPresenting: CertificatePair?
+	@State private var _sharePending: CertificatePair?
+	@State private var _isShareAlertPresenting = false
 
 	// MARK: Fetch
 	@FetchRequest(
@@ -40,7 +44,7 @@ struct CertificatesView: View {
 				_cellButton(for: cert, at: index)
 			}
 		}
-		.navigationTitle(.localized("Certificates"))
+		.navigationTitle("Chứng chỉ")
 		.navigationBarTitleDisplayMode(.inline)
         .overlay {
             if certificates.isEmpty {
@@ -75,6 +79,8 @@ struct CertificatesView: View {
 				style: .icon,
 				placement: .topBarTrailing
 				) {
+					// Kiểm tra lại trạng thái (thu hồi) của tất cả chứng chỉ
+					UIImpactFeedbackGenerator(style: .light).impactOccurred()
 					for cert in certificates {
 						Storage.shared.revokagedCertificate(for: cert)
 					}
@@ -86,7 +92,20 @@ struct CertificatesView: View {
 		}
 		.sheet(isPresented: $_isAddingPresenting) {
 			CertificatesAddView()
-				.presentationDetents([.medium])
+				.presentationDetents([.large])
+		}
+		.alert("Chia sẻ chứng chỉ", isPresented: $_isShareAlertPresenting) {
+			Button("Chia sẻ") {
+				if let cert = _sharePending {
+					CertificateSharing.share(cert)
+				}
+				_sharePending = nil
+			}
+			Button("Hủy", role: .cancel) {
+				_sharePending = nil
+			}
+		} message: {
+			Text("Tệp .xsigncert gồm chứng chỉ .p12, provisioning profile và cả mật khẩu. Chỉ gửi cho người bạn tin tưởng.")
 		}
 	}
 }
@@ -94,32 +113,42 @@ struct CertificatesView: View {
 extension CertificatesView {
 	@ViewBuilder
 	private func _cellButton(for cert: CertificatePair, at index: Int) -> some View {
-		Button {
+		let isSelected = _selectedCertBinding.wrappedValue == index
+		// Không bọc trong Button để nút chevron (menu) và nút sao chép UDID bấm riêng được
+		CertificatesCellView(
+			cert: cert,
+			isDefault: isSelected,
+			style: .card,
+			menu: AnyView(
+				Group {
+					_contextActions(for: cert)
+					Divider()
+					_actions(for: cert)
+				}
+			)
+		)
+		.padding()
+		.background(
+			RoundedRectangle(cornerRadius: _cornerRadius)
+				.fill(Color(uiColor: .secondarySystemGroupedBackground))
+		)
+		.overlay(
+			RoundedRectangle(cornerRadius: _cornerRadius)
+				.strokeBorder(
+					isSelected ? Color.accentColor : Color.clear,
+					lineWidth: 2
+				)
+		)
+		.contentShape(RoundedRectangle(cornerRadius: _cornerRadius))
+		.onTapGesture {
 			_selectedCertBinding.wrappedValue = index
-		} label: {
-			CertificatesCellView(
-				cert: cert
-			)
-			.padding()
-			.background(
-				RoundedRectangle(cornerRadius: _cornerRadius)
-					.fill(Color(uiColor: .quaternarySystemFill))
-			)
-			.overlay(
-				RoundedRectangle(cornerRadius: _cornerRadius)
-					.strokeBorder(
-						_selectedCertBinding.wrappedValue == index ? Color.accentColor : Color.clear,
-						lineWidth: 2
-					)
-			)
-			.contextMenu {
-				_contextActions(for: cert)
-				Divider()
-				_actions(for: cert)
-			}
-			.animation(.smooth, value: _selectedCertBinding.wrappedValue)
 		}
-		.buttonStyle(.plain)
+		.contextMenu {
+			_contextActions(for: cert)
+			Divider()
+			_actions(for: cert)
+		}
+		.animation(.smooth, value: _selectedCertBinding.wrappedValue)
 	}
     
     private var _cornerRadius: CGFloat {
@@ -143,7 +172,7 @@ extension CertificatesView {
                 Storage.shared.deleteCertificate(for: cert)
             }
 		} label: {
-			Label(.localized("Delete"), systemImage: "trash")
+			Label("Xóa", systemImage: "trash")
 		}
 	}
 	
@@ -152,7 +181,14 @@ extension CertificatesView {
 		Button {
 			_isSelectedInfoPresenting = cert
 		} label: {
-			Label(.localized("Get Info"), systemImage: "info.circle")
+			Label("Xem chi tiết", systemImage: "info.circle")
+		}
+		
+		Button {
+			_sharePending = cert
+			_isShareAlertPresenting = true
+		} label: {
+			Label("Chia sẻ chứng chỉ", systemImage: "square.and.arrow.up")
 		}
 	}
 	

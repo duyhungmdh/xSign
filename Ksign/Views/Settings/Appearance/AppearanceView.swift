@@ -4,158 +4,249 @@
 //
 //  Created by samara on 7.05.2025.
 //
+//  xSign: giao diện theo mẫu Zsign (xem trước, màu chủ đạo 3 chế độ, sáng/tối, biểu tượng).
+//
 
 import SwiftUI
 import NimbleViews
 
 struct AppearanceView: View {
     @AppStorage("Feather.userInterfaceStyle") private var _userIntefacerStyle: Int = UIUserInterfaceStyle.unspecified.rawValue
+    @StateObject private var _accent = AccentColorManager.shared
     
-	@AppStorage("Feather.libraryCellAppearance") private var _libraryCellAppearance: Int = 0
-	
-	private let _libraryCellAppearanceMethods: [String] = [
-		.localized("Standard"),
-		.localized("Pill")
-	]
-	
-	@AppStorage("Feather.storeCellAppearance") private var _storeCellAppearance: Int = 1
-	
-	private let _storeCellAppearanceMethods: [String] = [
-		.localized("Standard"),
-		.localized("Big Description")
-	]
-	
-	@AppStorage("Feather.accentColor") private var _selectedAccentColor: Int = 0
-	@StateObject private var accentColorManager = AccentColorManager.shared
+    @State private var _mode: Int = AccentColorManager.shared.mode.rawValue
+    @State private var _preset: Int = AccentColorManager.shared.presetIndex
+    @State private var _customColor: Color = Color(xsignHex: AccentColorManager.shared.customHex)
     
-	private let _accentColors: [(name: String, color: Color)] = [
-		(.localized("Default"), Color(red: 0x53/255, green: 0x94/255, blue: 0xF7/255)),
-		(.localized("Cherry"), Color(red: 0xFF/255, green: 0x8B/255, blue: 0x92/255)),
-		(.localized("Red"), .red),
-		(.localized("Orange"), .orange),
-		(.localized("Yellow"), .yellow),
-		(.localized("Green"), .green),
-		(.localized("Blue"), .blue),
-		(.localized("Purple"), .purple),
-		(.localized("Pink"), .pink),
-		(.localized("Indigo"), .indigo),
-		(.localized("Mint"), .mint),
-		(.localized("Cyan"), .cyan),
-		(.localized("Teal"), .teal)
-	]
-	
-	private var currentAccentColor: Color {
-		accentColorManager.currentAccentColor
-	}
-
+    private var _accentColor: Color { _accent.currentAccentColor }
+    
     var body: some View {
-        NBList(.localized("Appearance")) {
-            
-            Section {
-                Picker(.localized("Appearance"), selection: $_userIntefacerStyle) {
-                    ForEach(UIUserInterfaceStyle.allCases.sorted(by: { $0.rawValue < $1.rawValue }), id: \.rawValue) { style in
-                        Text(style.label).tag(style.rawValue)
-                    }
-                }
-                .pickerStyle(.segmented)
-            }
-			
-			NBSection(.localized("Sources")) {
-                _storePreview()
-				Picker(.localized("Store Cell Appearance"), selection: $_storeCellAppearance) {
-					ForEach(_storeCellAppearanceMethods.indices, id: \.description) { index in
-						Text(_storeCellAppearanceMethods[index]).tag(index)
-					}
-				}
-				.pickerStyle(.inline)
-                .labelsHidden()
-			}
-			
-			NBSection(.localized("Accent Color")) {
-				_accentColorPreview()
-				Picker(.localized("Accent Color"), selection: $_selectedAccentColor) {
-					ForEach(_accentColors.indices, id: \.description) { index in
-						HStack {
-							Circle()
-								.fill(_accentColors[index].color)
-								.frame(width: 20, height: 20)
-							Text(_accentColors[index].name)
-						}
-						.tag(index)
-					}
-				}
-				.pickerStyle(.inline)
-				.labelsHidden()
-			}
-		}
+        NBList(.localized("Giao diện")) {
+            _preview()
+            _languageSection()
+            _accentSection()
+            _styleSection()
+            _iconSection()
+        }
         .onChange(of: _userIntefacerStyle) { value in
             if let style = UIUserInterfaceStyle(rawValue: value) {
                 UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = style
             }
         }
-		.onChange(of: _selectedAccentColor) { _ in
-			accentColorManager.updateGlobalTintColor()
-		}
     }
-	
-	@ViewBuilder
-	private func _libraryPreview() -> some View {
-		HStack(spacing: 9) {
-			Image(uiImage: (UIImage(named: Bundle.main.iconFileName ?? ""))! )
-				.appIconStyle(size: 57)
-			
-			NBTitleWithSubtitleView(
-				title: Bundle.main.name,
-				subtitle: "\(Bundle.main.version) • \(Bundle.main.bundleIdentifier ?? "")",
-				linelimit: 0
-			)
-			
-			FRExpirationPillView(
-				title: .localized("Install"),
-				showOverlay: _libraryCellAppearance == 0,
-				expiration: Date.now.expirationInfo()
-			).animation(.spring, value: _libraryCellAppearance)
-		}
-	}
+}
+
+// MARK: - Sections
+extension AppearanceView {
+    @ViewBuilder
+    private func _preview() -> some View {
+        Section {
+            VStack(spacing: 14) {
+                HStack(spacing: 12) {
+                    Image(uiImage: UIImage(named: Bundle.main.iconFileName ?? "") ?? UIImage())
+                        .appIconStyle(size: 52)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: Bundle.main.name).font(.headline)
+                        Text("Xem trước màu chủ đạo")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                Text("Nút mẫu")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Capsule().fill(_accentColor))
+            }
+            .padding(.vertical, 4)
+            .animation(.easeInOut(duration: 0.2), value: _accentColor)
+        }
+    }
     
     @ViewBuilder
-    private func _storePreview() -> some View {
-        VStack {
-            HStack(spacing: 9) {
-                Image(uiImage: (UIImage(named: Bundle.main.iconFileName ?? ""))! )
-                    .appIconStyle(size: 57)
-                
-                NBTitleWithSubtitleView(
-                    title: Bundle.main.name,
-                    subtitle: "\(Bundle.main.version) • " + .localized("An awesome application"),
-                    linelimit: 0
-                )
-            }
-            
-            if _storeCellAppearance != 0 {
-                Text(.localized("An awesome application"))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(18)
-                    .padding(.top, 2)
+    private func _languageSection() -> some View {
+        Section {
+            NavigationLink(destination: LanguagePickerView()) {
+                HStack(spacing: 12) {
+                    Image(systemName: "globe")
+                        .font(.title3)
+                        .foregroundStyle(_accentColor)
+                        .frame(width: 26)
+                    Text("Ngôn ngữ")
+                    Spacer()
+                    Text(verbatim: AppLanguage.current.title)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
-        .animation(.spring, value: _storeCellAppearance)
     }
-	
-	@ViewBuilder
-	private func _accentColorPreview() -> some View {
-		HStack(spacing: 9) {
-			Circle()
-				.fill(currentAccentColor)
-				.frame(width: 57, height: 57)
-			
-			NBTitleWithSubtitleView(
-				title: .localized("Accent Color"),
-				subtitle: .localized("This is the current accent color"),
-				linelimit: 0
-			)
-		}
-	}
+    
+    @ViewBuilder
+    private func _accentSection() -> some View {
+        Section {
+            Picker("Màu chủ đạo", selection: $_mode) {
+                Text("Theo máy").tag(0)
+                Text("Chọn sẵn").tag(1)
+                Text("Tùy chỉnh").tag(2)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: _mode) { value in
+                _accent.mode = AccentColorManager.Mode(rawValue: value) ?? .device
+            }
+            
+            switch _mode {
+            case 1:
+                _presetGrid()
+            case 2:
+                ColorPicker("Chọn màu tùy ý", selection: $_customColor, supportsOpacity: false)
+                    .onChange(of: _customColor) { value in
+                        _accent.customHex = value.hexString
+                    }
+            default:
+                NavigationLink(destination: DeviceColorPickerView()) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "iphone")
+                            .font(.title3)
+                            .foregroundStyle(_accentColor)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Tự động theo máy")
+                            Text(verbatim: DeviceInfo.modelName + (DeviceInfo.selectedColor.map { " · \($0.name)" } ?? ""))
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            if DeviceInfo.selectedColor == nil {
+                                Text("Chạm để chọn màu máy")
+                                    .font(.footnote)
+                                    .foregroundStyle(_accentColor)
+                            }
+                        }
+                        Spacer()
+                        Circle().fill(_accentColor).frame(width: 24, height: 24)
+                    }
+                }
+            }
+        } header: {
+            Text("Màu chủ đạo")
+        } footer: {
+            Text("Áp cho nút, tab, điểm nhấn trong toàn app.")
+        }
+    }
+    
+    @ViewBuilder
+    private func _presetGrid() -> some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 5)
+        LazyVGrid(columns: columns, spacing: 14) {
+            ForEach(AccentColorManager.presets.indices, id: \.self) { index in
+                let color = Color(xsignHex: AccentColorManager.presets[index].hex)
+                Button {
+                    _preset = index
+                    _accent.presetIndex = index
+                } label: {
+                    ZStack {
+                        Circle().fill(color).frame(width: 38, height: 38)
+                        if _preset == index {
+                            Circle().strokeBorder(Color.primary, lineWidth: 2).frame(width: 46, height: 46)
+                            Image(systemName: "checkmark").font(.footnote.bold()).foregroundStyle(.white)
+                        }
+                    }
+                    .frame(width: 48, height: 48)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(AccentColorManager.presets[index].name)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+    
+    @ViewBuilder
+    private func _styleSection() -> some View {
+        Section {
+            Picker("Sáng & Tối", selection: $_userIntefacerStyle) {
+                Text("Hệ thống").tag(UIUserInterfaceStyle.unspecified.rawValue)
+                Text("Sáng").tag(UIUserInterfaceStyle.light.rawValue)
+                Text("Tối").tag(UIUserInterfaceStyle.dark.rawValue)
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Sáng & Tối")
+        }
+    }
+    
+    @ViewBuilder
+    private func _iconSection() -> some View {
+        Section {
+            Button {
+                UIApplication.shared.setAlternateIconName(nil)
+            } label: {
+                VStack(spacing: 6) {
+                    Image(uiImage: UIImage(named: Bundle.main.iconFileName ?? "") ?? UIImage())
+                        .appIconStyle(size: 64)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .strokeBorder(_accentColor, lineWidth: 2)
+                                .frame(width: 70, height: 70)
+                        )
+                    Text("Mặc định").font(.footnote).foregroundStyle(.primary)
+                }
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(.plain)
+        } header: {
+            Text("Biểu tượng ứng dụng")
+        }
+    }
+}
+
+// MARK: - Ngôn ngữ (Tiếng Việt / English)
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case vi, en
+    
+    static let key = "xsign.appLanguage"
+    var id: String { rawValue }
+    var title: String { self == .vi ? "Tiếng Việt" : "English" }
+    
+    static var current: AppLanguage {
+        AppLanguage(rawValue: UserDefaults.standard.string(forKey: key) ?? "") ?? .vi
+    }
+    
+    /// Lưu lựa chọn. SwiftUI đổi ngay nhờ .environment(\.locale); phần dùng String.localized đổi sau khi mở lại app.
+    static func apply(_ language: AppLanguage) {
+        UserDefaults.standard.set(language.rawValue, forKey: key)
+        UserDefaults.standard.set([language.rawValue], forKey: "AppleLanguages")
+    }
+    
+    /// Gọi lúc mở app: lần đầu mặc định Tiếng Việt
+    static func bootstrap() {
+        if UserDefaults.standard.string(forKey: key) == nil { apply(.vi) }
+    }
+}
+
+struct LanguagePickerView: View {
+    @AppStorage(AppLanguage.key) private var _language: String = AppLanguage.vi.rawValue
+    
+    var body: some View {
+        List {
+            Section {
+                ForEach(AppLanguage.allCases) { language in
+                    Button {
+                        _language = language.rawValue
+                        AppLanguage.apply(language)
+                    } label: {
+                        HStack {
+                            Text(verbatim: language.title).foregroundStyle(.primary)
+                            Spacer()
+                            if _language == language.rawValue {
+                                Image(systemName: "checkmark").foregroundStyle(Color.accentColor)
+                            }
+                        }
+                    }
+                }
+            } footer: {
+                Text("Một số chữ trong app đổi sau khi mở lại app.")
+            }
+        }
+        .navigationTitle(Text("Ngôn ngữ"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
 }

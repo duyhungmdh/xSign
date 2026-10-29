@@ -22,6 +22,7 @@ struct InstallPreviewView: View {
 	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1
 	@State private var _isWebviewPresenting = false
     @State private var progressTask: Task<Void, Never>?
+	@State private var _stuckTask: Task<Void, Never>?
 	
 	var app: AppInfoPresentable
 	@StateObject var viewModel: InstallerStatusViewModel
@@ -40,19 +41,36 @@ struct InstallPreviewView: View {
 	// MARK: Body
 	var body: some View {
 		ZStack {
-			InstallProgressView(app: app, viewModel: viewModel)
-			_status()
+			if isSharing {
+				// Xuất .ipa: giữ giao diện gốc
+				InstallProgressView(app: app, viewModel: viewModel)
+				_status()
+			} else {
+				// xSign v7: hộp thoại gọn, thanh 4 chặng 4 màu nằm trong hộp thoại
+				InstallSheetContent(app: app)
+			}
 		}
-		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: isSharing ? .center : .top)
 		.sheet(isPresented: $_isWebviewPresenting) {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
 		}
 		.onReceive(viewModel.$status) { newStatus in
+			// xSign v7.3: iOS đã gọi tới máy chủ cục bộ (hoặc đã xong/lỗi) thì tắt bộ canh "treo ở Gửi dữ liệu"
+			switch newStatus {
+			case .ready, .sendingManifest: break
+			default: _stuckTask?.cancel(); _stuckTask = nil
+			}
+			
 			if case .ready = newStatus {
+				_startStuckWatchdog()
 				if _serverMethod == 0 {
 					UIApplication.shared.open(URL(string: installer.iTunesLink)!)
 				} else if _serverMethod == 1 {
-					_isWebviewPresenting = true
+					// xSign: mở thẳng itms-services, bỏ trang Safari trung gian
+					// (tránh hộp thoại "Mở trang này trong iTunes?")
+					if let url = URL(string: installer.iTunesLinkExternal) {
+						UIApplication.shared.open(url)
+					}
 				}
 			}
             
@@ -69,6 +87,11 @@ struct InstallPreviewView: View {
 				_isWebviewPresenting = false
 			}
             
+			// xSign v7.2: cài xong thì tự đóng hộp thoại sau 1,5 giây (kịp thấy "Hoàn tất 100%")
+			if !isSharing, case .completed(.success) = newStatus {
+				DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { dismiss() }
+			}
+            
             switch newStatus {
             case .completed, .broken(_):
                 progressTask?.cancel()
@@ -81,11 +104,46 @@ struct InstallPreviewView: View {
 		.onAppear(perform: _install)
 		.onAppear {
 			BackgroundAudioManager.shared.start()
+			// xSign v6/v7: bật thanh tiến trình 4 chặng ở tab Ứng dụng đã ký
+			if !isSharing {
+				InstallProgressCenter.shared.begin(appName: app.name ?? "")
+			}
+		}
+		// xSign v6: mỗi khi trạng thái/tiến độ đổi, cập nhật thanh (đọc sau khi giá trị đã đổi)
+		.onReceive(viewModel.objectWillChange) { _ in
+			DispatchQueue.main.async {
+				InstallProgressCenter.shared.sync(viewModel)
+			}
 		}
 		.onDisappear {
+			_stuckTask?.cancel()
             progressTask?.cancel()
             progressTask = nil
 			BackgroundAudioManager.shared.stop()
+			InstallProgressCenter.shared.sheetClosed()
+		}
+	}
+	
+	/// 60 giây mà iOS vẫn chưa tải .ipa từ máy chủ cục bộ → báo nguyên nhân thường gặp (không tự huỷ cài đặt)
+	private func _startStuckWatchdog() {
+		guard !isSharing, _installationMethod == 0 else { return }
+		_stuckTask?.cancel()
+		_stuckTask = Task {
+			try? await Task.sleep(nanoseconds: 60_000_000_000)
+			guard !Task.isCancelled else { return }
+			await MainActor.run {
+				guard case .ready = viewModel.status else { return }
+				
+				let useLocalhost = UIAlertAction(title: "Dùng localhost", style: .default) { _ in
+					ServerInstaller.setIPFix(true)
+				}
+				let close = UIAlertAction(title: .localized("Dismiss"), style: .cancel)
+				UIAlertController.showAlert(
+					title: .localized("Install"),
+					message: "iOS chưa tải được ứng dụng từ máy chủ cài đặt trên máy.\n\nNếu bạn bấm \"Hủy\" ở hộp thoại hệ thống của iOS thì cứ đóng. Nếu không, hãy bật \"Chỉ sử dụng địa chỉ localhost\" (Cài đặt → Máy chủ) rồi cài lại. Bấm \"Dùng localhost\" để bật ngay.",
+					actions: [useLocalhost, close]
+				)
+			}
 		}
 	}
 	
@@ -155,6 +213,7 @@ struct InstallPreviewView: View {
 			} catch {
                 await progressTask?.cancel()
 				await MainActor.run {
+					InstallProgressCenter.shared.fail()
 					UIAlertController.showAlertWithOk(
 						title: .localized("Install"),
 						message: error.localizedDescription,
