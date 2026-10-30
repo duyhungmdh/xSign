@@ -70,9 +70,20 @@ struct FeatherApp: App {
 			if url.pathExtension == "ipa" || url.pathExtension == "tipa" {
 				if FileManager.default.isFileFromFileProvider(at: url) {
 					guard url.startAccessingSecurityScopedResource() else { return }
-					FR.handlePackageFile(url) { _ in }
-				} else {
-					FR.handlePackageFile(url) { _ in }
+				}
+				
+				// xSign v1.9.0: đi cùng đường với nút "+" → Nhập từ Tệp.
+				// Tạo lượt tải trong DownloadManager để thanh tiến trình (tab Ứng dụng tải về)
+				// và việc ghi nhớ tên tệp gốc hoạt động với file mở từ Telegram, Zalo, WhatsApp…
+				let id = "FeatherManualDownload_\(UUID().uuidString)"
+				let dl = DownloadManager.shared.startArchive(from: url, id: id)
+				DownloadManager.shared.handlePachageFile(url: url, dl: dl) { err in
+					if err != nil {
+						UIAlertController.showAlertWithOk(
+							title: "Error",
+							message: .localized("Whoops!, something went wrong when extracting the file. \nMaybe try switching the extraction library in the settings?")
+						)
+					}
 				}
 				
 				return
