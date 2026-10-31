@@ -1,6 +1,6 @@
 //
 //  XSignShare.swift
-//  xSign v1.9.4
+//  xSign v1.9.4 (v1.9.6: sửa await cho ArchiveHandler / InstallerStatusViewModel)
 //
 //  Chia sẻ tệp .ipa của app đã ký (vuốt dòng app ở tab Đã ký, và nút Chia sẻ trong hộp thoại ký xong).
 //  Dùng lại ArchiveHandler giống nút Xuất / Cài đặt: move() + archive() tạo ra tệp .ipa,
@@ -32,12 +32,13 @@ enum XSignShare {
 	
 	/// Đóng gói app đã ký thành .ipa rồi mở bảng chia sẻ.
 	/// `ArchiveHandler.move()` chép app vào thư mục tạm, `archive()` nén thành `Archive.ipa` (chạy nền).
+	@MainActor
 	static func shareSignedIPA(_ app: AppInfoPresentable, fileName: String?) {
 		UIImpactFeedbackGenerator(style: .light).impactOccurred()
 		Task.detached {
 			do {
-				let viewModel = await MainActor.run { InstallerStatusViewModel(isIdevice: false) }
-				let handler = ArchiveHandler(app: app, viewModel: viewModel)
+				let viewModel = await InstallerStatusViewModel(isIdevice: false)
+				let handler = await ArchiveHandler(app: app, viewModel: viewModel)
 				try await handler.move()
 				let packageUrl = try await handler.archive()
 				
