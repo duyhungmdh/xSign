@@ -9,7 +9,6 @@
 //
 
 import SwiftUI
-import CoreData
 import Combine
 import IDeviceSwift
 
@@ -574,8 +573,6 @@ final class SigningProgressCenter: ObservableObject {
 	@Published private(set) var stageFraction: Double = 0
 	@Published private(set) var certificateName: String = ""
 	@Published private(set) var app: AppInfoPresentable?
-	/// v1.9.4: ký xong mà không tự đóng → hộp thoại giữ lại và hiện nút Chia sẻ / Cài đặt
-	@Published private(set) var showsResultActions: Bool = false
 	
 	static let stageCount = 4
 	private var _hideWork: DispatchWorkItem?
@@ -607,7 +604,6 @@ final class SigningProgressCenter: ObservableObject {
 			_afterDismiss = nil
 			self.app = app
 			self.certificateName = certificateName
-			showsResultActions = false
 			stage = 1
 			stageFraction = 0
 			phase = .running
@@ -633,22 +629,16 @@ final class SigningProgressCenter: ObservableObject {
 		_main { [self] in _afterDismiss = block }
 	}
 	
-	/// `autoDismiss` = true (Ký & Cài đặt): đóng sau 1,5 giây như cũ để mở hộp thoại cài.
-	/// `autoDismiss` = false (Ký thường): hộp thoại giữ lại, hiện nút Chia sẻ / Cài đặt cho tới khi người dùng đóng.
-	func complete(autoDismiss: Bool = false) {
+	func complete() {
 		_main { [self] in
 			guard phase == .running else { return }
 			_stopCreep()
 			phase = .done
 			stage = Self.stageCount
 			stageFraction = 1
-			if autoDismiss {
-				let work = DispatchWorkItem { [weak self] in self?.dismiss() }
-				_hideWork = work
-				DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
-			} else {
-				showsResultActions = true
-			}
+			let work = DispatchWorkItem { [weak self] in self?.dismiss() }
+			_hideWork = work
+			DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
 		}
 	}
 	
@@ -665,7 +655,6 @@ final class SigningProgressCenter: ObservableObject {
 			_hideWork?.cancel(); _hideWork = nil
 			_stopCreep()
 			phase = .idle
-			showsResultActions = false
 			stage = 1
 			stageFraction = 0
 			app = nil
@@ -695,25 +684,9 @@ final class SigningProgressCenter: ObservableObject {
 
 struct SigningSheetContent: View {
 	@ObservedObject private var _center = SigningProgressCenter.shared
-	@ObservedObject private var _fileNames = ImportedFileNames.shared
-	
-	/// Bản ghi đã ký mới nhất (sau khi ký xong). Cùng cách LibraryView lấy app cho "Ký & Cài đặt".
-	@FetchRequest(
-		entity: Signed.entity(),
-		sortDescriptors: [NSSortDescriptor(keyPath: \Signed.date, ascending: false)],
-		animation: .none
-	) private var _signedApps: FetchedResults<Signed>
 	
 	private var _steps: [String] {
 		[String.localized("Preparing"), String.localized("Signing app"), String.localized("Packaging"), String.localized("Done")]
-	}
-	
-	private var _signedApp: Signed? { _signedApps.first }
-	
-	/// Tên tệp .ipa sẽ chia sẻ: tên tệp gốc + "-signed", không có thì ghép từ tên + phiên bản
-	private var _shareFileName: String? {
-		guard let signed = _signedApp else { return nil }
-		return XSignShare.signedFileName(source: _center.app, signed: signed)
 	}
 	
 	var body: some View {
@@ -729,64 +702,11 @@ struct SigningSheetContent: View {
 				isDone: _center.phase == .done,
 				isFailed: _center.phase == .failed
 			)
-			if _center.showsResultActions, _center.phase == .done, let signed = _signedApp {
-				_resultActions(signed)
-			}
 		}
 		.padding(.horizontal, 20)
 		.padding(.top, 20)
 		.padding(.bottom, 8)
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 		.background(XSignSheetBG.color.ignoresSafeArea())
-	}
-	
-	/// Hàng dưới cùng: tên tệp .ipa + nút Chia sẻ + nút Cài đặt
-	@ViewBuilder
-	private func _resultActions(_ signed: Signed) -> some View {
-		HStack(spacing: 10) {
-			Text(verbatim: _shareFileName ?? "")
-				.font(.system(.footnote, design: .monospaced))
-				.foregroundStyle(.secondary)
-				.lineLimit(1)
-				.truncationMode(.middle)
-			Spacer(minLength: 4)
-			
-			Button {
-				XSignShare.shareSignedIPA(signed, fileName: _shareFileName)
-			} label: {
-				Label(String.localized("Share"), systemImage: "square.and.arrow.up")
-					.font(.subheadline.weight(.semibold))
-					.lineLimit(1)
-					.fixedSize()
-					.padding(.horizontal, 14)
-					.padding(.vertical, 9)
-					.foregroundStyle(Color.xsignAction)
-					.background(
-						RoundedRectangle(cornerRadius: 10, style: .continuous)
-							.fill(Color.xsignAction.opacity(0.14))
-					)
-			}
-			.buttonStyle(.plain)
-			
-			Button {
-				// LibraryView nhận thông báo này, đánh dấu "mở hộp thoại cài sau khi hộp thoại ký đóng"
-				NotificationCenter.default.post(name: NSNotification.Name("feather.installApp"), object: nil)
-				SigningProgressCenter.shared.dismiss()
-			} label: {
-				Label(String.localized("Install"), systemImage: "square.and.arrow.down")
-					.font(.subheadline.weight(.semibold))
-					.lineLimit(1)
-					.fixedSize()
-					.padding(.horizontal, 14)
-					.padding(.vertical, 9)
-					.foregroundStyle(Color.white)
-					.background(
-						RoundedRectangle(cornerRadius: 10, style: .continuous)
-							.fill(Color.xsignAction)
-					)
-			}
-			.buttonStyle(.plain)
-		}
-		.padding(.top, 4)
 	}
 }

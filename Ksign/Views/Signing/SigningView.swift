@@ -349,8 +349,7 @@ extension SigningView {
 					}
 				}
 				
-				// v1.9.4: ký thường → hộp thoại giữ lại (nút Chia sẻ / Cài đặt); Ký & Cài đặt → tự đóng rồi mở hộp thoại cài
-				SigningProgressCenter.shared.complete(autoDismiss: install)
+				SigningProgressCenter.shared.complete()
 				
 				if install {
 					// LibraryView chờ hộp thoại ký đóng rồi mới mở hộp thoại cài (tránh 2 sheet cùng lúc)

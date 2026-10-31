@@ -209,10 +209,6 @@ extension SettingsView {
     @ViewBuilder
     private func _featureSection() -> some View {
         Section {
-            // v1.9.5: mục đầu tiên của phần Tính năng
-            NavigationLink(destination: TabBarCustomizationView()) {
-                _row("Điều chỉnh thanh điều hướng", "Sắp xếp, mặc định và mục hiển thị", icon: "rectangle.bottomthird.inset.filled")
-            }
             NavigationLink(destination: AppFeaturesView()) {
                 _row("Nâng cao", "Các tính năng bổ sung của app", icon: "sparkles")
             }

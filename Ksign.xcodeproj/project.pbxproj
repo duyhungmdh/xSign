@@ -37,7 +37,7 @@
 
 /* Begin PBXFileReference section */
 		336D43972DB7454A00206400 /* MobileCoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MobileCoreServices.framework; path = Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS18.2.sdk/System/Library/Frameworks/MobileCoreServices.framework; sourceTree = DEVELOPER_DIR; };
-		3379C1B92DA869A1004372DA /* Ksign.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ksign.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3379C1B92DA869A1004372DA /* xSign.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = xSign.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AABA5D192DB3C87800BFCD2C /* KsignTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KsignTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -128,7 +128,7 @@
 		3379C1BA2DA869A1004372DA /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				3379C1B92DA869A1004372DA /* Ksign.app */,
+				3379C1B92DA869A1004372DA /* xSign.app */,
 				AABA5D192DB3C87800BFCD2C /* KsignTests.xctest */,
 			);
 			name = Products;
@@ -173,7 +173,7 @@
 				C42CC1AE2F4370F20064A4A2 /* IDeviceSwift */,
 			);
 			productName = Feather;
-			productReference = 3379C1B92DA869A1004372DA /* Ksign.app */;
+			productReference = 3379C1B92DA869A1004372DA /* xSign.app */;
 			productType = "com.apple.product-type.application";
 		};
 		AABA5D182DB3C87800BFCD2C /* KsignTests */ = {
@@ -489,9 +489,9 @@
 					"$(PROJECT_DIR)/Ksign/Resources/idevice",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 1.9.5;
+				MARKETING_VERSION = 1.9.6;
 				PRODUCT_BUNDLE_IDENTIFIER = mdh.xsign;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = xSign;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
 				STRIP_INSTALLED_PRODUCT = NO;
@@ -555,9 +555,9 @@
 					"$(PROJECT_DIR)/Ksign/Resources/idevice",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
-				MARKETING_VERSION = 1.9.5;
+				MARKETING_VERSION = 1.9.6;
 				PRODUCT_BUNDLE_IDENTIFIER = mdh.xsign;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = xSign;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = auto;
 				STRIPFLAGS = "-rSTx";
@@ -593,7 +593,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ksign.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Ksign";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/xSign.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/xSign";
 			};
 			name = Debug;
 		};
@@ -616,7 +616,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ksign.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Ksign";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/xSign.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/xSign";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

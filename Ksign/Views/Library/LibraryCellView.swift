@@ -108,18 +108,9 @@ struct LibraryCellView: View {
 				_actionSheetButtons(for: app)
 			}
 		}
-		.swipeActions(edge: .trailing) {
+		.swipeActions {
 			if !isEditing {
-				// Xóa nằm sát mép phải; Chia sẻ .ipa chỉ có ở tab Ứng dụng đã ký (v1.9.4)
 				_actions(for: app)
-				if app.isSigned {
-					Button {
-						XSignShare.shareSignedIPA(app, fileName: XSignShare.signedFileName(source: nil, signed: app))
-					} label: {
-						Label(.localized("Share"), systemImage: "square.and.arrow.up")
-					}
-					.tint(.blue)
-				}
 			}
 		}
 		.contextMenu {
