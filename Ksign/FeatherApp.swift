@@ -112,6 +112,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         if !UserDefaults.standard.bool(forKey: "hasInitializedBuiltInSources") {
             _initializeBuiltInSources()
             UserDefaults.standard.set(true, forKey: "hasInitializedBuiltInSources")
+            // xSign v1.9.3: cài mới đã dùng sẵn kho MDH, không cần chuyển kho
+            UserDefaults.standard.set(true, forKey: "xsign.replacedKsignRepo.v1")
+        } else {
+            // xSign v1.9.3: bản cài từ trước → thêm kho MDH, bỏ "Ksign Repository" (một lần)
+            Storage.shared.replaceKsignRepositoryWithMDH()
         }
         
         _clean()

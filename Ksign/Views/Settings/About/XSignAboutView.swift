@@ -10,7 +10,7 @@ import NimbleViews
 
 struct XSignAboutView: View {
 	/// Lấy từ MARKETING_VERSION trong project.pbxproj nên đổi một chỗ là khớp mọi nơi
-	private let _version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.9.2"
+	private let _version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.9.3"
 	private let _buildID = "mdh.xsign"
 	private let _author = "Mai Hồng Vũ"
 	

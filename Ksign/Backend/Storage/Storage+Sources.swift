@@ -7,6 +7,7 @@
 
 import CoreData
 import AltSourceKit
+import NimbleJSON
 
 // MARK: - Class extension: Sources
 extension Storage {
@@ -108,11 +109,44 @@ extension Storage {
 		UserDefaults.standard.set(true, forKey: flag)
 	}
 
+	/// xSign v1.9.3: kho mặc định của xSign (thay cho "Ksign Repository" của Nyasami).
+	static let mdhSourceURL = "https://raw.githubusercontent.com/duyhungmdh/MDHIOS/main/Apps.json"
+	
+	/// xSign v1.9.3: với bản đã cài từ trước, thêm kho MDH và xoá "Ksign Repository" (chạy một lần).
+	/// Chạy lặng lẽ: không hiện hộp thoại (khác `FR.handleSource`). Mạng lỗi thì KHÔNG đặt cờ,
+	/// lần mở app sau tự thử lại. Bản cài mới hoàn toàn không cần hàm này (đã dùng kho MDH sẵn).
+	func replaceKsignRepositoryWithMDH() {
+		let flag = "xsign.replacedKsignRepo.v1"
+		guard !UserDefaults.standard.bool(forKey: flag),
+			  let url = URL(string: Storage.mdhSourceURL) else { return }
+		
+		NBFetchService().fetch<ASRepository>(from: url) { (result: Result<ASRepository, Error>) in
+			guard case .success(let data) = result else { return }
+			
+			DispatchQueue.main.async {
+				let storage = Storage.shared
+				let id = data.id ?? url.absoluteString
+				if !storage.sourceExists(id) {
+					storage.addSource(url, repository: data, id: id) { _ in }
+				}
+				
+				for source in storage.getSources() {
+					if source.sourceURL?.absoluteString.contains("Nyasami/Ksign") == true {
+						storage.context.delete(source)
+					}
+				}
+				storage.saveContext()
+				UserDefaults.standard.set(true, forKey: flag)
+			}
+		}
+	}
+
 	func addBuiltInSources() {
 		removeUnwantedBuiltInSources()
 		
+		// xSign v1.9.3: kho mặc định "Ksign Repository" được thay bằng kho MDH (MDHIOS)
 		let builtInSourceURLs = [
-            "https://raw.githubusercontent.com/Nyasami/Ksign/refs/heads/main/repo.json",
+            Storage.mdhSourceURL,
             "https://github.com/LiveContainer/LiveContainer/releases/download/1.0/apps.json"
 		]
 		
