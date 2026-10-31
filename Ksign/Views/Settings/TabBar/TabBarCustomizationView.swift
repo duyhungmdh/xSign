@@ -339,7 +339,7 @@ struct TabIconPickerView: View {
 	let tab: TabEnum
 	let onSave: (String?) -> Void
 	
-	@State private var _name: String
+	@State private var iconName: String
 	
 	private static let suggestions: [String] = [
 		"folder.fill", "square.grid.2x2", "plus.app.fill", "square.and.arrow.down.fill", "gearshape.2",
@@ -351,10 +351,10 @@ struct TabIconPickerView: View {
 	init(tab: TabEnum, current: String?, onSave: @escaping (String?) -> Void) {
 		self.tab = tab
 		self.onSave = onSave
-		self._name = State(initialValue: current ?? tab.defaultIcon)
+		self._iconName = State(initialValue: current ?? tab.defaultIcon)
 	}
 	
-	private var _trimmed: String { _name.trimmingCharacters(in: .whitespacesAndNewlines) }
+	private var _trimmed: String { iconName.trimmingCharacters(in: .whitespacesAndNewlines) }
 	private var _isValid: Bool { !_trimmed.isEmpty && UIImage(systemName: _trimmed) != nil }
 	
 	var body: some View {
@@ -378,7 +378,7 @@ struct TabIconPickerView: View {
 								.foregroundStyle(.secondary)
 						}
 					}
-					TextField("Tên SF Symbol", text: $_name)
+					TextField("Tên SF Symbol", text: $iconName)
 						.textInputAutocapitalization(.never)
 						.autocorrectionDisabled()
 					if !_trimmed.isEmpty, !_isValid {
@@ -392,7 +392,7 @@ struct TabIconPickerView: View {
 					LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 5), spacing: 10) {
 						ForEach(Self.suggestions, id: \.self) { symbol in
 							Button {
-								_name = symbol
+								iconName = symbol
 							} label: {
 								Image(systemName: symbol)
 									.font(.title3)
