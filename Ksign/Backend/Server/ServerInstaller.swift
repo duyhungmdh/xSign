@@ -99,8 +99,28 @@ class ServerInstaller: Identifiable, ObservableObject {
 		}
 	}
 		
+	/// xSign v1.9.2: giá trị mặc định của "Phương thức máy chủ" = 1 (Bán cục bộ).
+	/// Các màn hình (`@AppStorage("Feather.serverMethod") = 1`) coi mặc định là Bán cục bộ,
+	/// nhưng `UserDefaults.integer(forKey:)` trả 0 (Cục bộ hoàn toàn) khi chưa từng lưu →
+	/// cài mới hoàn toàn thì giao diện nói "Bán cục bộ" còn máy chủ chạy HTTPS "Cục bộ hoàn toàn",
+	/// iOS không tải được .ipa và treo ở "Gửi dữ liệu". Hai nơi phải dùng chung một mặc định.
+	static let defaultServerMethod = 1
+	
 	static func getServerMethod() -> Int {
-		UserDefaults.standard.integer(forKey: "Feather.serverMethod")
+		let defaults = UserDefaults.standard
+		guard defaults.object(forKey: "Feather.serverMethod") != nil else {
+			return defaultServerMethod
+		}
+		return defaults.integer(forKey: "Feather.serverMethod")
+	}
+	
+	/// Ghi mặc định xuống UserDefaults ngay lần mở app đầu tiên (gọi từ `AppDelegate`),
+	/// để mọi nơi đọc trực tiếp từ UserDefaults đều thấy cùng giá trị với giao diện.
+	static func ensureDefaultServerMethod() {
+		let defaults = UserDefaults.standard
+		if defaults.object(forKey: "Feather.serverMethod") == nil {
+			defaults.set(defaultServerMethod, forKey: "Feather.serverMethod")
+		}
 	}
 	
 	static func getIPFix() -> Bool {

@@ -103,6 +103,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         
+        // xSign v1.9.2: chốt mặc định "Bán cục bộ" trước khi có bất kỳ lượt cài nào
+        ServerInstaller.ensureDefaultServerMethod()
+        
         AppLanguage.bootstrap()
         _createPipeline()
         _createSourcesDirectory()

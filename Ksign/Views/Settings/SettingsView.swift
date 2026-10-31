@@ -79,10 +79,13 @@ extension SettingsView {
             
             // 2) UDID (chỉ icon sao chép, giữ lâu để dán UDID tay)
             HStack(spacing: 12) {
-                Image(systemName: "iphone")
-                    .font(.title3)
-                    .foregroundStyle(Color.accentColor)
-                    .frame(width: 26)
+                // xSign v1.9.2: logo Apple giữ nguyên màu bạc gốc (không tô theo màu giao diện).
+                // Ảnh `AppleLogo` có lề trong suốt ~10%, khung 26 pt giữ thẳng hàng chữ với hàng "Thiết bị".
+                Image("AppleLogo")
+                    .renderingMode(.original)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 26, height: 26)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("UDID thiết bị này")
                     if let udid = _udid {

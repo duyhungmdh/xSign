@@ -36,7 +36,8 @@ struct SourcesView: View {
 						SourceAppsView(object: Array(_sources), viewModel: viewModel)
 					} label: {
 						HStack(spacing: 9) {
-							Image("Repositories").appIconStyle()
+							// xSign v1.9.2: icon ngôi sao thay cho hình mèo (asset AllSourcesIcon)
+							Image("AllSourcesIcon").appIconStyle()
 							NBTitleWithSubtitleView(
 								title: .localized("All Repositories"),
 								subtitle: .localized("See all apps from your sources")
