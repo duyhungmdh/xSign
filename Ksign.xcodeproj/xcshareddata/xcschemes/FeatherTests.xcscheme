@@ -42,7 +42,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "3379C1B82DA869A1004372DA"
-            BuildableName = "Ksign.app"
+            BuildableName = "xSign.app"
             BlueprintName = "Ksign"
             ReferencedContainer = "container:Ksign.xcodeproj">
          </BuildableReference>
@@ -58,7 +58,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "3379C1B82DA869A1004372DA"
-            BuildableName = "Ksign.app"
+            BuildableName = "xSign.app"
             BlueprintName = "Ksign"
             ReferencedContainer = "container:Ksign.xcodeproj">
          </BuildableReference>

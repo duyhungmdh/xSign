@@ -1,4 +1,5 @@
 NAME := Ksign
+APPNAME := xSign
 PLATFORM := iphoneos
 SCHEMES := Ksign
 TMP := $(TMPDIR)/$(NAME)
@@ -40,15 +41,15 @@ $(SCHEMES): deps
 	rm -rf "$(STAGE)/"
 	mkdir -p "$(STAGE)/Payload"
 
-	mv "$(APP)/$@.app" "$(STAGE)/Payload/$@.app"
+	mv "$(APP)/$(APPNAME).app" "$(STAGE)/Payload/$(APPNAME).app"
 
-	chmod -R 0755 "$(STAGE)/Payload/$@.app"
-	codesign --force --sign - --timestamp=none "$(STAGE)/Payload/$@.app"
+	chmod -R 0755 "$(STAGE)/Payload/$(APPNAME).app"
+	codesign --force --sign - --timestamp=none "$(STAGE)/Payload/$(APPNAME).app"
 
-	cp deps/* "$(STAGE)/Payload/$@.app/" || true
+	cp deps/* "$(STAGE)/Payload/$(APPNAME).app/" || true
 
-	rm -rf "$(STAGE)/Payload/$@.app/_CodeSignature"
+	rm -rf "$(STAGE)/Payload/$(APPNAME).app/_CodeSignature"
 	ln -sf "$(STAGE)/Payload" Payload
 	
 	mkdir -p packages
-	zip -r9 "packages/$@.ipa" Payload
+	zip -r9 "packages/$(APPNAME).ipa" Payload
