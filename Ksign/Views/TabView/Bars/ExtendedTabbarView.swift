@@ -5,6 +5,9 @@
 //  Created by samara on 5/17/24.
 //  Copyright (c) 2024 Samara M (khcrysalis)
 //
+//  xSign v1.9.5: tab mở đầu tiên lấy từ cấu hình thanh điều hướng, nên TabView có `selection`
+//  và mọi Tab mang một giá trị chuỗi (tab chính = rawValue, nguồn = "src.<id>").
+//
 
 import SwiftUI
 import NukeUI
@@ -16,6 +19,7 @@ struct ExtendedTabbarView: View {
 	@StateObject var viewModel = SourcesViewModel.shared
 	
 	@State private var _isAddingPresenting = false
+	@State private var _selection: String = TabEnum.launchDefaultTab.rawValue
 	
 	@FetchRequest(
 		entity: AltSource.entity(),
@@ -24,15 +28,15 @@ struct ExtendedTabbarView: View {
 	) private var _sources: FetchedResults<AltSource>
 		
 	var body: some View {
-		TabView {
+		TabView(selection: $_selection) {
 			ForEach(TabEnum.defaultTabs, id: \.hashValue) { tab in
-				Tab(tab.title, systemImage: tab.icon) {
+				Tab(tab.title, systemImage: tab.icon, value: tab.rawValue) {
 					TabEnum.view(for: tab)
 				}
 			}
 			
 			ForEach(TabEnum.customizableTabs, id: \.hashValue) { tab in
-				Tab(tab.title, systemImage: tab.icon) {
+				Tab(tab.title, systemImage: tab.icon, value: tab.rawValue) {
 					TabEnum.view(for: tab)
 				}
 				.customizationID("tab.\(tab.rawValue)")
@@ -42,14 +46,14 @@ struct ExtendedTabbarView: View {
 			}
 			
 			TabSection("Sources") {
-				Tab(.localized("All Repositories"), systemImage: "globe.desk") {
+				Tab(.localized("All Repositories"), systemImage: "globe.desk", value: "src.all") {
 					NavigationStack {
 						SourceAppsView(object: Array(_sources), viewModel: viewModel)
 					}
 				}
 				
 				ForEach(_sources, id: \.identifier) { source in
-					Tab {
+					Tab(value: "src.\(source.identifier ?? "")") {
 						NavigationStack {
 							SourceAppsView(object: [source], viewModel: viewModel)
 						}

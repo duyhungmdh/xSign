@@ -4,6 +4,9 @@
 //
 //  Created by samara on 22.03.2025.
 //
+//  xSign v1.9.5: danh sách tab trên thanh, tab mặc định và icon đọc từ `XSignTabConfig.launch`
+//  (cấu hình người dùng chỉnh trong Cài đặt → Điều chỉnh thanh điều hướng).
+//
 
 import SwiftUI
 import NimbleViews
@@ -28,7 +31,17 @@ enum TabEnum: String, CaseIterable, Hashable {
 		}
 	}
 	
+	/// Icon đang dùng trên thanh: icon người dùng chọn (nếu hợp lệ), không thì icon gốc
 	var icon: String {
+		if let custom = XSignTabConfig.launch.icons[rawValue],
+		   !custom.isEmpty,
+		   UIImage(systemName: custom) != nil {
+			return custom
+		}
+		return defaultIcon
+	}
+	
+	var defaultIcon: String {
 		switch self {
         case .files:        return "folder.fill"
 		case .sources: 		return "globe.desk"
@@ -53,7 +66,8 @@ enum TabEnum: String, CaseIterable, Hashable {
 		}
 	}
 	
-	static var defaultTabs: [TabEnum] {
+	/// 5 tab gốc của Ksign / xSign trước v1.9.5
+	static var factoryTabs: [TabEnum] {
 		return [
             .files,
             .library,
@@ -63,9 +77,18 @@ enum TabEnum: String, CaseIterable, Hashable {
 		]
 	}
 	
+	/// Tab hiện trên thanh (theo cấu hình lúc mở app)
+	static var defaultTabs: [TabEnum] {
+		return XSignTabConfig.launch.visibleTabs
+	}
+	
+	/// Tab chỉ hiện ở thanh bên iPad / iOS 18 (Chứng chỉ). Đã lên thanh chính thì không lặp lại ở đây
 	static var customizableTabs: [TabEnum] {
-		return [
-			.certificates
-		]
+		return [TabEnum.certificates].filter { !XSignTabConfig.launch.visible.contains($0.rawValue) }
+	}
+	
+	/// Tab mở đầu tiên sau khi khởi động
+	static var launchDefaultTab: TabEnum {
+		return XSignTabConfig.launch.defaultTabEnum
 	}
 }

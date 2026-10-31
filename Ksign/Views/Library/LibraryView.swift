@@ -210,7 +210,8 @@ struct LibraryView: View {
 				}
 			}) {
 				SigningSheetContent()
-					.presentationDetents([.height(210)])
+					// v1.9.4: ký xong giữ hộp thoại → cao hơn để chứa hàng nút Chia sẻ / Cài đặt
+					.presentationDetents([.height(_signingProgress.showsResultActions ? 268 : 210)])
 					.presentationDragIndicator(.visible)
 					.interactiveDismissDisabled(_signingProgress.phase == .running)
 					.xsignSheetBackground()
